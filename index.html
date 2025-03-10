@@ -135,6 +135,13 @@
                 margin: 5px 0;
             }
         }
+        .preset-buttons {
+            display: flex;
+            gap: 5px;
+        }
+        .preset-buttons button {
+            min-width: 60px;
+        }
     </style>
 </head>
 <body>
@@ -433,41 +440,57 @@
 
             function updatePresetList() {
                 const presets = JSON.parse(localStorage.getItem('videoLooperPresets') || '[]');
-                console.log('Current presets:', presets); // Debug log
+                console.log('Current presets:', presets);
                 presetList.innerHTML = '';
+
+                // Add clear all button if there are presets
+                if (presets.length > 0) {
+                    const clearAllDiv = document.createElement('div');
+                    clearAllDiv.className = 'preset-item';
+                    clearAllDiv.innerHTML = `
+                        <button class="remove" style="width: 100%">Clear All Presets</button>
+                    `;
+                    clearAllDiv.querySelector('button').addEventListener('click', () => {
+                        if (confirm('Are you sure you want to clear all presets?')) {
+                            localStorage.removeItem('videoLooperPresets');
+                            updatePresetList();
+                        }
+                    });
+                    presetList.appendChild(clearAllDiv);
+                }
+
                 presets.forEach((preset, index) => {
                     const item = document.createElement('div');
                     item.className = 'preset-item';
                     item.innerHTML = `
                         <span>${preset.name} (${preset.videos.length} videos, ${preset.repeatCount} loops)</span>
-                        <button class="load-preset" data-index="${index}">Load</button>
-                        <button class="delete-preset remove" data-index="${index}">Delete</button>
+                        <div class="preset-buttons">
+                            <button class="load-preset" data-index="${index}">Load</button>
+                            <button class="delete-preset remove" data-index="${index}">Delete</button>
+                        </div>
                     `;
-                    presetList.appendChild(item);
-                });
 
-                // Add event listeners to the newly created buttons
-                document.querySelectorAll('.load-preset').forEach(button => {
-                    button.addEventListener('click', function() {
-                        const index = parseInt(this.dataset.index);
-                        console.log('Loading preset at index:', index); // Debug log
+                    const loadBtn = item.querySelector('.load-preset');
+                    const deleteBtn = item.querySelector('.delete-preset');
+
+                    loadBtn.addEventListener('click', () => {
                         const presets = JSON.parse(localStorage.getItem('videoLooperPresets') || '[]');
                         if (presets[index]) {
-                            console.log('Loading preset:', presets[index]); // Debug log
+                            console.log('Loading preset:', presets[index]);
                             loadPreset(presets[index]);
                         }
                     });
-                });
 
-                document.querySelectorAll('.delete-preset').forEach(button => {
-                    button.addEventListener('click', function() {
-                        const index = parseInt(this.dataset.index);
-                        console.log('Deleting preset at index:', index); // Debug log
-                        let presets = JSON.parse(localStorage.getItem('videoLooperPresets') || '[]');
-                        presets.splice(index, 1);
-                        localStorage.setItem('videoLooperPresets', JSON.stringify(presets));
-                        updatePresetList();
+                    deleteBtn.addEventListener('click', () => {
+                        if (confirm('Are you sure you want to delete this preset?')) {
+                            let presets = JSON.parse(localStorage.getItem('videoLooperPresets') || '[]');
+                            presets.splice(index, 1);
+                            localStorage.setItem('videoLooperPresets', JSON.stringify(presets));
+                            updatePresetList();
+                        }
                     });
+
+                    presetList.appendChild(item);
                 });
             }
 
@@ -490,7 +513,7 @@
                     }))
                 };
 
-                console.log('Saving preset:', preset); // Debug log
+                console.log('Saving preset:', preset);
 
                 let presets = JSON.parse(localStorage.getItem('videoLooperPresets') || '[]');
                 
@@ -507,10 +530,10 @@
                 }
                 
                 localStorage.setItem('videoLooperPresets', JSON.stringify(presets));
-                console.log('Saved presets:', presets); // Debug log
+                console.log('Saved presets:', presets);
                 presetNameInput.value = '';
                 updatePresetList();
-                alert('Preset saved successfully!'); // User feedback
+                alert('Preset saved successfully!');
             });
 
             // Add debug information display
@@ -556,7 +579,7 @@ Saved Presets: ${JSON.stringify(presets, null, 2)}
             // Initialize preset list and button states when the page loads
             updatePresetList();
             updateQueueDisplay();
-            
+
             // Event Listeners
             videoInput.addEventListener('change', (e) => {
                 const files = Array.from(e.target.files);
