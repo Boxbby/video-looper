@@ -1,196 +1,94 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Video Looper & Queue</title>
+    <title>Video Looper</title>
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f0f0f0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            margin: 20px;
+            background-color: #f0f2f5;
         }
         .container {
             max-width: 800px;
-            width: 100%;
-            background: white;
+            margin: 0 auto;
+            background-color: white;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         .setup-container {
-            border: 1px solid #ddd;
-            padding: 15px;
             margin-bottom: 20px;
-            border-radius: 4px;
-        }
-        video {
-            width: 100%;
-            border-radius: 4px;
-            margin-bottom: 20px;
-        }
-        .controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        button {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            background-color: #007bff;
-            color: white;
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        button:hover {
-            background-color: #0056b3;
-        }
-        button.remove {
-            background-color: #dc3545;
-        }
-        button.remove:hover {
-            background-color: #c82333;
-        }
-        button.start {
-            background-color: #28a745;
-            font-size: 1.1em;
-            padding: 12px 24px;
-        }
-        button.start:hover {
-            background-color: #218838;
-        }
-        button.load {
-            background-color: #17a2b8;
-            font-size: 1.1em;
-            padding: 12px 24px;
-        }
-        button.load:hover {
-            background-color: #138496;
-        }
-        input[type="file"] {
-            margin-bottom: 20px;
-        }
-        .loop-controls, .preset-controls {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-        }
-        input[type="number"], input[type="text"] {
-            width: 80px;
-            padding: 5px;
-        }
-        input[type="text"].preset-name {
-            width: 200px;
-        }
-        .queue-container {
-            margin-top: 20px;
-            border-top: 1px solid #ddd;
-            padding-top: 20px;
-        }
-        .queue-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 10px;
-            padding: 10px;
-            background-color: #f8f9fa;
-            border-radius: 4px;
-        }
-        .queue-item span {
-            flex-grow: 1;
-        }
-        .preset-list {
-            margin-top: 10px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        .preset-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px;
-            background-color: #f8f9fa;
-            border-radius: 4px;
-            margin-bottom: 5px;
         }
         .hidden {
             display: none;
         }
+        #videoPlayer {
+            width: 100%;
+            max-width: 800px;
+            margin-bottom: 10px;
+        }
+        .controls {
+            margin: 10px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        button.remove {
+            background-color: #dc3545;
+        }
+        .queue-item {
+            padding: 10px;
+            margin: 5px 0;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
         .status-loaded {
-            color: #2ecc71;
+            color: #28a745;
         }
         .status-pending {
-            color: #e74c3c;
+            color: #ffc107;
         }
-
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-            .container {
-                padding: 10px;
-            }
-            .controls {
-                flex-direction: column;
-            }
-            .controls button {
-                width: 100%;
-                margin-bottom: 10px;
-            }
-            input[type="number"], input[type="text"] {
-                width: 100%;
-                margin-bottom: 10px;
-            }
-            .loop-controls {
-                flex-direction: column;
-            }
-            .loop-controls label {
-                width: 100%;
-                margin-bottom: 10px;
-            }
-            .preset-controls {
-                flex-direction: column;
-            }
-            .preset-controls input {
-                width: 100%;
-                margin-bottom: 10px;
-            }
-            video {
-                width: 100%;
-                height: auto;
-            }
+        input[type="number"], input[type="text"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-right: 10px;
+        }
+        .preset-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+        }
+        .preset-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin: 5px 0;
+            background-color: #f8f9fa;
+            border-radius: 4px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Video Looper & Queue</h1>
+        <h1>Video Looper</h1>
         
-        <div class="setup-container">
-            <h2>Setup</h2>
-            <div class="loop-controls">
-                <label>End Time (s): <input type="number" id="endTime" min="0" step="0.1" value="0"></label>
-                <label>Loop Count: <input type="number" id="repeatCount" min="1" value="1"></label>
-            </div>
-            <input type="file" id="videoInput" accept="video/*" multiple>
-            <div id="setupQueue" class="queue-container">
-                <h3>Selected Videos</h3>
-                <div id="videoQueue"></div>
-            </div>
-            <div class="controls">
-                <button id="loadVideos" class="load">Load Videos</button>
-                <button id="startPlayback" class="start">Start Playback</button>
-            </div>
-        </div>
-
         <div id="playerContainer" class="hidden">
             <video id="videoPlayer" controls>
                 Your browser does not support the video element.
@@ -198,17 +96,37 @@
             <div class="controls">
                 <button id="resetLoop">Reset Loop</button>
                 <button id="nextVideo">Next Video</button>
-                <button id="stopPlayback">Stop & Return to Setup</button>
+                <button id="stopPlayback">Stop</button>
             </div>
         </div>
 
-        <div class="preset-controls">
-            <h2>Presets</h2>
-            <div>
-                <input type="text" id="presetName" class="preset-name" placeholder="Enter preset name">
-                <button id="savePreset">Save Current Setup as Preset</button>
+        <div class="setup-container">
+            <div class="controls">
+                <input type="file" id="videoInput" accept="video/*" multiple>
+                <button id="loadVideos" disabled>Load Videos</button>
+                <button id="startPlayback" disabled>Start Playback</button>
             </div>
-            <div class="preset-list" id="presetList"></div>
+            
+            <div class="controls">
+                <label>End Time (seconds):
+                    <input type="number" id="endTime" value="0" min="0" step="0.1">
+                </label>
+                <label>Repeat Count:
+                    <input type="number" id="repeatCount" value="1" min="1">
+                </label>
+            </div>
+
+            <h3>Video Queue</h3>
+            <div id="videoQueue"></div>
+
+            <div class="preset-section">
+                <h3>Presets</h3>
+                <div class="controls">
+                    <input type="text" id="presetName" placeholder="Preset Name">
+                    <button id="savePreset">Save Current Setup as Preset</button>
+                </div>
+                <div id="presetList"></div>
+            </div>
         </div>
     </div>
 
