@@ -1,0 +1,21 @@
+# IDE files
+.idea/
+.vscode/
+*.iml
+
+# Gradle files
+.gradle/
+build/
+gradle/
+gradlew
+gradlew.bat
+gradle.properties
+build.gradle
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Node.js files (if we use it later)
+node_modules/
+package-lock.json

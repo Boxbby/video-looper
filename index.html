@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Video Looper & Queue</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f0f0f0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .setup-container {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 4px;
+        }
+        video {
+            width: 100%;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        button {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button.remove {
+            background-color: #dc3545;
+        }
+        button.remove:hover {
+            background-color: #c82333;
+        }
+        button.start {
+            background-color: #28a745;
+            font-size: 1.1em;
+            padding: 12px 24px;
+        }
+        button.start:hover {
+            background-color: #218838;
+        }
+        button.load {
+            background-color: #17a2b8;
+            font-size: 1.1em;
+            padding: 12px 24px;
+        }
+        button.load:hover {
+            background-color: #138496;
+        }
+        input[type="file"] {
+            margin-bottom: 20px;
+        }
+        .loop-controls, .preset-controls {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        input[type="number"], input[type="text"] {
+            width: 80px;
+            padding: 5px;
+        }
+        input[type="text"].preset-name {
+            width: 200px;
+        }
+        .queue-container {
+            margin-top: 20px;
+            border-top: 1px solid #ddd;
+            padding-top: 20px;
+        }
+        .queue-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .queue-item span {
+            flex-grow: 1;
+        }
+        .preset-list {
+            margin-top: 10px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .preset-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            margin-bottom: 5px;
+        }
+        .hidden {
+            display: none;
+        }
+        .status-loaded {
+            color: #2ecc71;
+        }
+        .status-pending {
+            color: #e74c3c;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            .container {
+                padding: 10px;
+            }
+            .controls {
+                flex-direction: column;
+            }
+            .controls button {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            input[type="number"], input[type="text"] {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            .loop-controls {
+                flex-direction: column;
+            }
+            .loop-controls label {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            .preset-controls {
+                flex-direction: column;
+            }
+            .preset-controls input {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            video {
+                width: 100%;
+                height: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Video Looper & Queue</h1>
+        
+        <div class="setup-container">
+            <h2>Setup</h2>
+            <div class="loop-controls">
+                <label>End Time (s): <input type="number" id="endTime" min="0" step="0.1" value="0"></label>
+                <label>Loop Count: <input type="number" id="repeatCount" min="1" value="1"></label>
+            </div>
+            <input type="file" id="videoInput" accept="video/*" multiple>
+            <div id="setupQueue" class="queue-container">
+                <h3>Selected Videos</h3>
+                <div id="videoQueue"></div>
+            </div>
+            <div class="controls">
+                <button id="loadVideos" class="load">Load Videos</button>
+                <button id="startPlayback" class="start">Start Playback</button>
+            </div>
+        </div>
+
+        <div id="playerContainer" class="hidden">
+            <video id="videoPlayer" controls>
+                Your browser does not support the video element.
+            </video>
+            <div class="controls">
+                <button id="resetLoop">Reset Loop</button>
+                <button id="nextVideo">Next Video</button>
+                <button id="stopPlayback">Stop & Return to Setup</button>
+            </div>
+        </div>
+
+        <div class="preset-controls">
+            <h2>Presets</h2>
+            <div>
+                <input type="text" id="presetName" class="preset-name" placeholder="Enter preset name">
+                <button id="savePreset">Save Current Setup as Preset</button>
+            </div>
+            <div class="preset-list" id="presetList"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const videoPlayer = document.getElementById('videoPlayer');
+            const videoInput = document.getElementById('videoInput');
+            const endTimeInput = document.getElementById('endTime');
+            const repeatCountInput = document.getElementById('repeatCount');
+            const videoQueueDiv = document.getElementById('videoQueue');
+            const loadVideosBtn = document.getElementById('loadVideos');
+            const startPlaybackBtn = document.getElementById('startPlayback');
+            const stopPlaybackBtn = document.getElementById('stopPlayback');
+            const resetLoopBtn = document.getElementById('resetLoop');
+            const nextVideoBtn = document.getElementById('nextVideo');
+            const playerContainer = document.getElementById('playerContainer');
+            const setupContainer = document.querySelector('.setup-container');
+            const presetNameInput = document.getElementById('presetName');
+            const savePresetBtn = document.getElementById('savePreset');
+            const presetList = document.getElementById('presetList');
+
+            let loopInterval;
+            let videoQueue = [];
+            let loadedVideoQueue = [];
+            let currentVideoIndex = -1;
+            let repeatCounter = 0;
+            let targetRepeatCount = 1;
+            let globalEndTime = 0;
+            let videosLoaded = false;
+
+            // Initialize speech synthesis
+            const speechSynth = window.speechSynthesis;
+
+            function announceFileName(filename) {
+                const cleanName = filename.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
+                const utterance = new SpeechSynthesisUtterance(`Now playing: ${cleanName}`);
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+                speechSynth.speak(utterance);
+            }
+
+            function updateQueueDisplay() {
+                videoQueueDiv.innerHTML = '';
+                videoQueue.forEach((video, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'queue-item';
+                    const loadedStatus = videosLoaded ? 
+                        '<span class="status-loaded">(Loaded)</span>' : 
+                        '<span class="status-pending">(Pending Load)</span>';
+                    item.innerHTML = `
+                        <span>${video.name} ${loadedStatus}</span>
+                        <button class="remove" onclick="removeFromQueue(${index})">Remove</button>
+                    `;
+                    if (index === currentVideoIndex) {
+                        item.style.backgroundColor = '#e2e6ea';
+                    }
+                    videoQueueDiv.appendChild(item);
+                });
+
+                // Update button states
+                loadVideosBtn.disabled = videoQueue.length === 0;
+                startPlaybackBtn.disabled = !videosLoaded;
+            }
+
+            window.removeFromQueue = (index) => {
+                videoQueue.splice(index, 1);
+                if (index < currentVideoIndex) {
+                    currentVideoIndex--;
+                }
+                videosLoaded = false;
+                loadedVideoQueue = [];
+                updateQueueDisplay();
+            };
+
+            function loadVideos() {
+                loadedVideoQueue = videoQueue.map(file => ({
+                    file: file,
+                    url: URL.createObjectURL(file)
+                }));
+                videosLoaded = true;
+                updateQueueDisplay();
+            }
+
+            function playNextVideo() {
+                if (currentVideoIndex < loadedVideoQueue.length - 1) {
+                    currentVideoIndex++;
+                    const video = loadedVideoQueue[currentVideoIndex];
+                    videoPlayer.src = video.url;
+                    videoPlayer.load();
+                    videoPlayer.play();
+                    updateQueueDisplay();
+                    announceFileName(video.file.name);
+                    return true;
+                }
+                return false;
+            }
+
+            function startPlayback() {
+                if (!videosLoaded) {
+                    alert('Please load the videos first');
+                    return;
+                }
+
+                if (loadedVideoQueue.length === 0) {
+                    alert('Please select at least one video');
+                    return;
+                }
+
+                globalEndTime = parseFloat(endTimeInput.value);
+                targetRepeatCount = parseInt(repeatCountInput.value) || 1;
+
+                if (isNaN(globalEndTime) || globalEndTime <= 0) {
+                    alert('Please enter a valid end time');
+                    return;
+                }
+
+                setupContainer.classList.add('hidden');
+                playerContainer.classList.remove('hidden');
+                
+                currentVideoIndex = -1;
+                playNextVideo();
+                startLooping();
+            }
+
+            function startLooping() {
+                if (loopInterval) {
+                    clearInterval(loopInterval);
+                }
+
+                repeatCounter = 0;
+                loopInterval = setInterval(() => {
+                    if (videoPlayer.currentTime >= Math.min(globalEndTime, videoPlayer.duration)) {
+                        repeatCounter++;
+                        if (repeatCounter >= targetRepeatCount) {
+                            if (!playNextVideo()) {
+                                clearInterval(loopInterval);
+                                videoPlayer.pause();
+                            } else {
+                                repeatCounter = 0;
+                            }
+                        } else {
+                            videoPlayer.currentTime = 0;
+                        }
+                    }
+                }, 50);
+            }
+
+            function stopPlayback() {
+                if (loopInterval) {
+                    clearInterval(loopInterval);
+                    loopInterval = null;
+                }
+                videoPlayer.pause();
+                playerContainer.classList.add('hidden');
+                setupContainer.classList.remove('hidden');
+                currentVideoIndex = -1;
+                updateQueueDisplay();
+            }
+
+            function loadPreset(preset) {
+                endTimeInput.value = preset.endTime;
+                repeatCountInput.value = preset.repeatCount;
+                videoQueue = [];
+                loadedVideoQueue = [];
+                videosLoaded = false;
+                preset.videos.forEach(video => {
+                    const item = document.createElement('div');
+                    item.className = 'queue-item';
+                    item.innerHTML = `
+                        <span>${video.name}</span>
+                        <span style="color: #666;">(Please reselect file)</span>
+                    `;
+                    videoQueueDiv.appendChild(item);
+                });
+                updateQueueDisplay();
+            }
+
+            function updatePresetList() {
+                const presets = JSON.parse(localStorage.getItem('videoLooperPresets') || '[]');
+                presetList.innerHTML = '';
+                presets.forEach((preset, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'preset-item';
+                    item.innerHTML = `
+                        <span>${preset.name}</span>
+                        <button onclick="loadPresetByIndex(${index})">Load</button>
+                        <button class="remove" onclick="deletePresetByIndex(${index})">Delete</button>
+                    `;
+                    presetList.appendChild(item);
+                });
+            }
+
+            window.loadPresetByIndex = (index) => {
+                const presets = JSON.parse(localStorage.getItem('videoLooperPresets') || '[]');
+                if (presets[index]) {
+                    loadPreset(presets[index]);
+                }
+            };
+
+            window.deletePresetByIndex = (index) => {
+                const presets = JSON.parse(localStorage.getItem('videoLooperPresets') || '[]');
+                presets.splice(index, 1);
+                localStorage.setItem('videoLooperPresets', JSON.stringify(presets));
+                updatePresetList();
+            };
+
+            function savePreset() {
+                const name = presetNameInput.value.trim();
+                if (!name) {
+                    alert('Please enter a preset name');
+                    return;
+                }
+
+                const preset = {
+                    name: name,
+                    endTime: parseFloat(endTimeInput.value),
+                    repeatCount: parseInt(repeatCountInput.value),
+                    videos: videoQueue.map(file => ({
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        lastModified: file.lastModified
+                    }))
+                };
+
+                let presets = JSON.parse(localStorage.getItem('videoLooperPresets') || '[]');
+                presets.push(preset);
+                localStorage.setItem('videoLooperPresets', JSON.stringify(presets));
+                
+                presetNameInput.value = '';
+                updatePresetList();
+            }
+
+            // Event Listeners
+            videoInput.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files);
+                videoQueue = files;
+                videosLoaded = false;
+                loadedVideoQueue = [];
+                updateQueueDisplay();
+            });
+
+            loadVideosBtn.addEventListener('click', loadVideos);
+            startPlaybackBtn.addEventListener('click', startPlayback);
+            stopPlaybackBtn.addEventListener('click', stopPlayback);
+            resetLoopBtn.addEventListener('click', () => {
+                if (loopInterval) {
+                    clearInterval(loopInterval);
+                    loopInterval = null;
+                }
+                videoPlayer.currentTime = 0;
+                repeatCounter = 0;
+                startLooping();
+            });
+
+            nextVideoBtn.addEventListener('click', () => {
+                if (loopInterval) {
+                    clearInterval(loopInterval);
+                    loopInterval = null;
+                }
+                if (playNextVideo()) {
+                    startLooping();
+                }
+            });
+
+            savePresetBtn.addEventListener('click', savePreset);
+
+            // Initialize preset list and button states
+            updatePresetList();
+            updateQueueDisplay();
+        });
+    </script>
+</body>
+</html>
