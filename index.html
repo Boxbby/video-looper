@@ -385,12 +385,13 @@
                 videoQueue = [];
                 loadedVideoQueue = [];
                 videosLoaded = false;
+                videoQueueDiv.innerHTML = '';  // Clear existing queue display
                 preset.videos.forEach(video => {
                     const item = document.createElement('div');
                     item.className = 'queue-item';
                     item.innerHTML = `
                         <span>${video.name}</span>
-                        <span style="color: #666;">(Please reselect file)</span>
+                        <span class="status-pending">(Please reselect file)</span>
                     `;
                     videoQueueDiv.appendChild(item);
                 });
@@ -404,9 +405,9 @@
                     const item = document.createElement('div');
                     item.className = 'preset-item';
                     item.innerHTML = `
-                        <span>${preset.name}</span>
-                        <button onclick="loadPresetByIndex(${index})">Load</button>
-                        <button class="remove" onclick="deletePresetByIndex(${index})">Delete</button>
+                        <span>${preset.name} (${preset.videos.length} videos, ${preset.repeatCount} loops)</span>
+                        <button onclick="window.loadPresetByIndex(${index})">Load</button>
+                        <button class="remove" onclick="window.deletePresetByIndex(${index})">Delete</button>
                     `;
                     presetList.appendChild(item);
                 });
@@ -420,7 +421,7 @@
             };
 
             window.deletePresetByIndex = (index) => {
-                const presets = JSON.parse(localStorage.getItem('videoLooperPresets') || '[]');
+                let presets = JSON.parse(localStorage.getItem('videoLooperPresets') || '[]');
                 presets.splice(index, 1);
                 localStorage.setItem('videoLooperPresets', JSON.stringify(presets));
                 updatePresetList();
@@ -435,8 +436,8 @@
 
                 const preset = {
                     name: name,
-                    endTime: parseFloat(endTimeInput.value),
-                    repeatCount: parseInt(repeatCountInput.value),
+                    endTime: parseFloat(endTimeInput.value) || 0,
+                    repeatCount: parseInt(repeatCountInput.value) || 1,
                     videos: videoQueue.map(file => ({
                         name: file.name,
                         type: file.type,
@@ -446,9 +447,20 @@
                 };
 
                 let presets = JSON.parse(localStorage.getItem('videoLooperPresets') || '[]');
-                presets.push(preset);
-                localStorage.setItem('videoLooperPresets', JSON.stringify(presets));
                 
+                // Check for duplicate names
+                const existingIndex = presets.findIndex(p => p.name === name);
+                if (existingIndex >= 0) {
+                    if (confirm('A preset with this name already exists. Do you want to update it?')) {
+                        presets[existingIndex] = preset;
+                    } else {
+                        return;
+                    }
+                } else {
+                    presets.push(preset);
+                }
+                
+                localStorage.setItem('videoLooperPresets', JSON.stringify(presets));
                 presetNameInput.value = '';
                 updatePresetList();
             }
