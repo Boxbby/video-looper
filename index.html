@@ -267,7 +267,7 @@
                         '<span class="status-pending">(Pending Load)</span>';
                     item.innerHTML = `
                         <span>${video.name} ${loadedStatus}</span>
-                        <button class="remove" onclick="removeFromQueue(${index})">Remove</button>
+                        <button class="remove-video remove" data-index="${index}">Remove</button>
                     `;
                     if (index === currentVideoIndex) {
                         item.style.backgroundColor = '#e2e6ea';
@@ -275,12 +275,20 @@
                     videoQueueDiv.appendChild(item);
                 });
 
+                // Add event listeners to remove buttons
+                document.querySelectorAll('.remove-video').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const index = parseInt(button.dataset.index);
+                        removeFromQueue(index);
+                    });
+                });
+
                 // Update button states
                 loadVideosBtn.disabled = videoQueue.length === 0;
                 startPlaybackBtn.disabled = !videosLoaded;
             }
 
-            window.removeFromQueue = (index) => {
+            function removeFromQueue(index) {
                 videoQueue.splice(index, 1);
                 if (index < currentVideoIndex) {
                     currentVideoIndex--;
@@ -288,7 +296,7 @@
                 videosLoaded = false;
                 loadedVideoQueue = [];
                 updateQueueDisplay();
-            };
+            }
 
             function loadVideos() {
                 loadedVideoQueue = videoQueue.map(file => ({
@@ -406,28 +414,67 @@
                     item.className = 'preset-item';
                     item.innerHTML = `
                         <span>${preset.name} (${preset.videos.length} videos, ${preset.repeatCount} loops)</span>
-                        <button onclick="window.loadPresetByIndex(${index})">Load</button>
-                        <button class="remove" onclick="window.deletePresetByIndex(${index})">Delete</button>
+                        <button class="load-preset" data-index="${index}">Load</button>
+                        <button class="delete-preset remove" data-index="${index}">Delete</button>
                     `;
                     presetList.appendChild(item);
                 });
+
+                // Add event listeners to the newly created buttons
+                document.querySelectorAll('.load-preset').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const index = parseInt(button.dataset.index);
+                        const presets = JSON.parse(localStorage.getItem('videoLooperPresets') || '[]');
+                        if (presets[index]) {
+                            loadPreset(presets[index]);
+                        }
+                    });
+                });
+
+                document.querySelectorAll('.delete-preset').forEach(button => {
+                    button.addEventListener('click', () => {
+                        const index = parseInt(button.dataset.index);
+                        let presets = JSON.parse(localStorage.getItem('videoLooperPresets') || '[]');
+                        presets.splice(index, 1);
+                        localStorage.setItem('videoLooperPresets', JSON.stringify(presets));
+                        updatePresetList();
+                    });
+                });
             }
 
-            window.loadPresetByIndex = (index) => {
-                const presets = JSON.parse(localStorage.getItem('videoLooperPresets') || '[]');
-                if (presets[index]) {
-                    loadPreset(presets[index]);
+            // Event Listeners
+            videoInput.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files);
+                videoQueue = files;
+                videosLoaded = false;
+                loadedVideoQueue = [];
+                updateQueueDisplay();
+            });
+
+            loadVideosBtn.addEventListener('click', loadVideos);
+            startPlaybackBtn.addEventListener('click', startPlayback);
+            stopPlaybackBtn.addEventListener('click', stopPlayback);
+            resetLoopBtn.addEventListener('click', () => {
+                if (loopInterval) {
+                    clearInterval(loopInterval);
+                    loopInterval = null;
                 }
-            };
+                videoPlayer.currentTime = 0;
+                repeatCounter = 0;
+                startLooping();
+            });
 
-            window.deletePresetByIndex = (index) => {
-                let presets = JSON.parse(localStorage.getItem('videoLooperPresets') || '[]');
-                presets.splice(index, 1);
-                localStorage.setItem('videoLooperPresets', JSON.stringify(presets));
-                updatePresetList();
-            };
+            nextVideoBtn.addEventListener('click', () => {
+                if (loopInterval) {
+                    clearInterval(loopInterval);
+                    loopInterval = null;
+                }
+                if (playNextVideo()) {
+                    startLooping();
+                }
+            });
 
-            function savePreset() {
+            savePresetBtn.addEventListener('click', () => {
                 const name = presetNameInput.value.trim();
                 if (!name) {
                     alert('Please enter a preset name');
@@ -463,41 +510,7 @@
                 localStorage.setItem('videoLooperPresets', JSON.stringify(presets));
                 presetNameInput.value = '';
                 updatePresetList();
-            }
-
-            // Event Listeners
-            videoInput.addEventListener('change', (e) => {
-                const files = Array.from(e.target.files);
-                videoQueue = files;
-                videosLoaded = false;
-                loadedVideoQueue = [];
-                updateQueueDisplay();
             });
-
-            loadVideosBtn.addEventListener('click', loadVideos);
-            startPlaybackBtn.addEventListener('click', startPlayback);
-            stopPlaybackBtn.addEventListener('click', stopPlayback);
-            resetLoopBtn.addEventListener('click', () => {
-                if (loopInterval) {
-                    clearInterval(loopInterval);
-                    loopInterval = null;
-                }
-                videoPlayer.currentTime = 0;
-                repeatCounter = 0;
-                startLooping();
-            });
-
-            nextVideoBtn.addEventListener('click', () => {
-                if (loopInterval) {
-                    clearInterval(loopInterval);
-                    loopInterval = null;
-                }
-                if (playNextVideo()) {
-                    startLooping();
-                }
-            });
-
-            savePresetBtn.addEventListener('click', savePreset);
 
             // Initialize preset list and button states
             updatePresetList();
