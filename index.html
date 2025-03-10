@@ -250,6 +250,13 @@
                 speechSynth.speak(utterance);
             }
 
+            function announceLastLoop() {
+                const utterance = new SpeechSynthesisUtterance("Last loop");
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+                speechSynth.speak(utterance);
+            }
+
             function updateQueueDisplay() {
                 videoQueueDiv.innerHTML = '';
                 videoQueue.forEach((video, index) => {
@@ -351,6 +358,10 @@
                             }
                         } else {
                             videoPlayer.currentTime = 0;
+                            // Announce last loop when starting the final repeat
+                            if (repeatCounter === targetRepeatCount - 1) {
+                                announceLastLoop();
+                            }
                         }
                     }
                 }, 50);
