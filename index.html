@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Video Looper</title>
     <style>
         body {
@@ -26,6 +28,7 @@
             width: 100%;
             max-width: 800px;
             margin-bottom: 10px;
+            border-radius: 4px;
         }
         .controls {
             margin: 10px 0;
@@ -40,6 +43,10 @@
             border: none;
             border-radius: 4px;
             cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        button:hover:not(:disabled) {
+            background-color: #0056b3;
         }
         button:disabled {
             background-color: #ccc;
@@ -47,6 +54,9 @@
         }
         button.remove {
             background-color: #dc3545;
+        }
+        button.remove:hover {
+            background-color: #c82333;
         }
         .queue-item {
             padding: 10px;
@@ -59,15 +69,21 @@
         }
         .status-loaded {
             color: #28a745;
+            font-weight: bold;
         }
         .status-pending {
             color: #ffc107;
+            font-weight: bold;
         }
         input[type="number"], input[type="text"] {
             padding: 8px;
             border: 1px solid #ddd;
             border-radius: 4px;
             margin-right: 10px;
+            width: 100px;
+        }
+        input[type="text"] {
+            width: 200px;
         }
         .preset-section {
             margin-top: 20px;
@@ -82,6 +98,42 @@
             margin: 5px 0;
             background-color: #f8f9fa;
             border-radius: 4px;
+        }
+        .preset-item span {
+            flex-grow: 1;
+            margin-right: 10px;
+        }
+        .preset-item button {
+            margin-left: 5px;
+        }
+        
+        /* Mobile Responsive Styles */
+        @media (max-width: 600px) {
+            body {
+                margin: 10px;
+            }
+            .container {
+                padding: 10px;
+            }
+            .controls {
+                flex-direction: column;
+            }
+            button {
+                width: 100%;
+            }
+            input[type="number"], input[type="text"] {
+                width: calc(100% - 20px);
+                margin-bottom: 10px;
+            }
+            .preset-item {
+                flex-direction: column;
+                gap: 10px;
+                text-align: center;
+            }
+            .preset-item button {
+                width: 100%;
+                margin: 5px 0;
+            }
         }
     </style>
 </head>
