@@ -214,6 +214,8 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('Page loaded, initializing...'); // Debug log
+            
             const videoPlayer = document.getElementById('videoPlayer');
             const videoInput = document.getElementById('videoInput');
             const endTimeInput = document.getElementById('endTime');
@@ -388,12 +390,19 @@
             }
 
             function loadPreset(preset) {
-                endTimeInput.value = preset.endTime;
-                repeatCountInput.value = preset.repeatCount;
+                console.log('Loading preset values:', preset); // Debug log
+                
+                // Set the input values
+                endTimeInput.value = preset.endTime || 0;
+                repeatCountInput.value = preset.repeatCount || 1;
+                
+                // Clear existing queue
                 videoQueue = [];
                 loadedVideoQueue = [];
                 videosLoaded = false;
-                videoQueueDiv.innerHTML = '';  // Clear existing queue display
+                
+                // Update the UI
+                videoQueueDiv.innerHTML = '';
                 preset.videos.forEach(video => {
                     const item = document.createElement('div');
                     item.className = 'queue-item';
@@ -403,11 +412,17 @@
                     `;
                     videoQueueDiv.appendChild(item);
                 });
+                
+                // Update display and button states
                 updateQueueDisplay();
+                
+                // Show feedback to user
+                alert(`Preset "${preset.name}" loaded.\nPlease reselect ${preset.videos.length} video(s):\n${preset.videos.map(v => v.name).join('\n')}`);
             }
 
             function updatePresetList() {
                 const presets = JSON.parse(localStorage.getItem('videoLooperPresets') || '[]');
+                console.log('Current presets:', presets); // Debug log
                 presetList.innerHTML = '';
                 presets.forEach((preset, index) => {
                     const item = document.createElement('div');
@@ -422,18 +437,21 @@
 
                 // Add event listeners to the newly created buttons
                 document.querySelectorAll('.load-preset').forEach(button => {
-                    button.addEventListener('click', () => {
-                        const index = parseInt(button.dataset.index);
+                    button.addEventListener('click', function() {
+                        const index = parseInt(this.dataset.index);
+                        console.log('Loading preset at index:', index); // Debug log
                         const presets = JSON.parse(localStorage.getItem('videoLooperPresets') || '[]');
                         if (presets[index]) {
+                            console.log('Loading preset:', presets[index]); // Debug log
                             loadPreset(presets[index]);
                         }
                     });
                 });
 
                 document.querySelectorAll('.delete-preset').forEach(button => {
-                    button.addEventListener('click', () => {
-                        const index = parseInt(button.dataset.index);
+                    button.addEventListener('click', function() {
+                        const index = parseInt(this.dataset.index);
+                        console.log('Deleting preset at index:', index); // Debug log
                         let presets = JSON.parse(localStorage.getItem('videoLooperPresets') || '[]');
                         presets.splice(index, 1);
                         localStorage.setItem('videoLooperPresets', JSON.stringify(presets));
@@ -442,6 +460,92 @@
                 });
             }
 
+            savePresetBtn.addEventListener('click', () => {
+                const name = presetNameInput.value.trim();
+                if (!name) {
+                    alert('Please enter a preset name');
+                    return;
+                }
+
+                const preset = {
+                    name: name,
+                    endTime: parseFloat(endTimeInput.value) || 0,
+                    repeatCount: parseInt(repeatCountInput.value) || 1,
+                    videos: videoQueue.map(file => ({
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        lastModified: file.lastModified
+                    }))
+                };
+
+                console.log('Saving preset:', preset); // Debug log
+
+                let presets = JSON.parse(localStorage.getItem('videoLooperPresets') || '[]');
+                
+                // Check for duplicate names
+                const existingIndex = presets.findIndex(p => p.name === name);
+                if (existingIndex >= 0) {
+                    if (confirm('A preset with this name already exists. Do you want to update it?')) {
+                        presets[existingIndex] = preset;
+                    } else {
+                        return;
+                    }
+                } else {
+                    presets.push(preset);
+                }
+                
+                localStorage.setItem('videoLooperPresets', JSON.stringify(presets));
+                console.log('Saved presets:', presets); // Debug log
+                presetNameInput.value = '';
+                updatePresetList();
+                alert('Preset saved successfully!'); // User feedback
+            });
+
+            // Add debug information display
+            const debugDiv = document.createElement('div');
+            debugDiv.style.marginTop = '20px';
+            debugDiv.style.padding = '10px';
+            debugDiv.style.border = '1px solid #ccc';
+            debugDiv.style.display = 'none'; // Hidden by default
+            
+            const toggleDebug = document.createElement('button');
+            toggleDebug.textContent = 'Toggle Debug Info';
+            toggleDebug.addEventListener('click', () => {
+                debugDiv.style.display = debugDiv.style.display === 'none' ? 'block' : 'none';
+                updateDebugInfo();
+            });
+            
+            function updateDebugInfo() {
+                if (debugDiv.style.display === 'block') {
+                    const presets = JSON.parse(localStorage.getItem('videoLooperPresets') || '[]');
+                    debugDiv.innerHTML = `
+                        <h3>Debug Information</h3>
+                        <pre>
+Current Queue: ${videoQueue.length} videos
+Loaded Queue: ${loadedVideoQueue.length} videos
+Videos Loaded: ${videosLoaded}
+Current Index: ${currentVideoIndex}
+Repeat Counter: ${repeatCounter}
+Target Repeats: ${targetRepeatCount}
+Global End Time: ${globalEndTime}
+Saved Presets: ${JSON.stringify(presets, null, 2)}
+                        </pre>
+                    `;
+                }
+            }
+            
+            // Add debug elements to the page
+            document.querySelector('.container').appendChild(toggleDebug);
+            document.querySelector('.container').appendChild(debugDiv);
+            
+            // Update debug info periodically
+            setInterval(updateDebugInfo, 1000);
+
+            // Initialize preset list and button states when the page loads
+            updatePresetList();
+            updateQueueDisplay();
+            
             // Event Listeners
             videoInput.addEventListener('change', (e) => {
                 const files = Array.from(e.target.files);
@@ -473,48 +577,6 @@
                     startLooping();
                 }
             });
-
-            savePresetBtn.addEventListener('click', () => {
-                const name = presetNameInput.value.trim();
-                if (!name) {
-                    alert('Please enter a preset name');
-                    return;
-                }
-
-                const preset = {
-                    name: name,
-                    endTime: parseFloat(endTimeInput.value) || 0,
-                    repeatCount: parseInt(repeatCountInput.value) || 1,
-                    videos: videoQueue.map(file => ({
-                        name: file.name,
-                        type: file.type,
-                        size: file.size,
-                        lastModified: file.lastModified
-                    }))
-                };
-
-                let presets = JSON.parse(localStorage.getItem('videoLooperPresets') || '[]');
-                
-                // Check for duplicate names
-                const existingIndex = presets.findIndex(p => p.name === name);
-                if (existingIndex >= 0) {
-                    if (confirm('A preset with this name already exists. Do you want to update it?')) {
-                        presets[existingIndex] = preset;
-                    } else {
-                        return;
-                    }
-                } else {
-                    presets.push(preset);
-                }
-                
-                localStorage.setItem('videoLooperPresets', JSON.stringify(presets));
-                presetNameInput.value = '';
-                updatePresetList();
-            });
-
-            // Initialize preset list and button states
-            updatePresetList();
-            updateQueueDisplay();
         });
     </script>
 </body>
