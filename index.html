@@ -391,67 +391,62 @@
                     const item = document.createElement('div');
                     item.className = 'queue-item';
                     
-                    // Create a unique file input for this video
-                    const fileInputId = `reselect-video-${index}`;
                     item.innerHTML = `
                         <div style="display: flex; align-items: center; gap: 10px; width: 100%;">
                             <span style="flex-grow: 1;">${video.name}</span>
                             <div style="display: flex; gap: 5px;">
-                                <button class="reselect-btn" style="background-color: #007bff;">
-                                    Reselect Video
-                                </button>
-                                <input type="file" 
-                                    id="${fileInputId}" 
-                                    accept="video/*" 
-                                    style="display: none;"
-                                    data-index="${index}"
-                                    data-original-name="${video.name}"
-                                >
+                                <button class="reselect-btn" style="background-color: #007bff;">Reselect Video</button>
                                 <span class="status-pending">(Pending)</span>
                             </div>
                         </div>
                     `;
                     videoQueueDiv.appendChild(item);
                     
-                    // Add event listeners
-                    const fileInput = item.querySelector('input[type="file"]');
+                    // Add event listener for the reselect button
                     const reselectBtn = item.querySelector('.reselect-btn');
                     const statusSpan = item.querySelector('.status-pending');
                     
                     reselectBtn.addEventListener('click', () => {
-                        fileInput.click();
-                    });
-                    
-                    fileInput.addEventListener('change', (e) => {
-                        const file = e.target.files[0];
-                        if (file) {
-                            const index = parseInt(e.target.dataset.index);
-                            
-                            // Ensure videoQueue has enough slots
-                            while (videoQueue.length <= index) {
-                                videoQueue.push(null);
+                        // Create a temporary file input
+                        const tempFileInput = document.createElement('input');
+                        tempFileInput.type = 'file';
+                        tempFileInput.accept = 'video/*';
+                        tempFileInput.style.display = 'none';
+                        document.body.appendChild(tempFileInput);
+                        
+                        tempFileInput.addEventListener('change', (e) => {
+                            const file = e.target.files[0];
+                            if (file) {
+                                // Ensure videoQueue has enough slots
+                                while (videoQueue.length <= index) {
+                                    videoQueue.push(null);
+                                }
+                                
+                                // Update the queue
+                                videoQueue[index] = file;
+                                
+                                // Update status
+                                statusSpan.textContent = '(Selected)';
+                                statusSpan.className = 'status-loaded';
+                                
+                                // Clean up null entries
+                                videoQueue = videoQueue.filter(f => f !== null);
+                                
+                                // Enable load button if all videos are selected
+                                const allSelected = preset.videos.length === videoQueue.length;
+                                loadVideosBtn.disabled = !allSelected;
+                                
+                                if (allSelected) {
+                                    videosLoaded = false;
+                                    loadedVideoQueue = [];
+                                    updateQueueDisplay();
+                                }
                             }
-                            
-                            // Update the queue
-                            videoQueue[index] = file;
-                            
-                            // Update status
-                            statusSpan.textContent = '(Selected)';
-                            statusSpan.className = 'status-loaded';
-                            
-                            // Clean up null entries and update display
-                            videoQueue = videoQueue.filter(f => f !== null);
-                            
-                            // Enable load button if all videos are selected
-                            const allSelected = preset.videos.length === videoQueue.length;
-                            loadVideosBtn.disabled = !allSelected;
-                            
-                            if (allSelected) {
-                                videosLoaded = false;
-                                loadedVideoQueue = [];
-                                updateQueueDisplay();
-                            }
-                        }
+                            // Clean up the temporary input
+                            document.body.removeChild(tempFileInput);
+                        });
+                        
+                        tempFileInput.click();
                     });
                 });
                 
