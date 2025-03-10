@@ -260,30 +260,37 @@
             }
 
             function updateQueueDisplay() {
-                videoQueueDiv.innerHTML = '';
-                videoQueue.forEach((video, index) => {
-                    const item = document.createElement('div');
-                    item.className = 'queue-item';
-                    const loadedStatus = videosLoaded ? 
-                        '<span class="status-loaded">(Loaded)</span>' : 
-                        '<span class="status-pending">(Pending Load)</span>';
-                    item.innerHTML = `
-                        <span>${video.name} ${loadedStatus}</span>
-                        <button class="remove-video remove" data-index="${index}">Remove</button>
-                    `;
-                    if (index === currentVideoIndex) {
-                        item.style.backgroundColor = '#e2e6ea';
-                    }
-                    videoQueueDiv.appendChild(item);
-                });
-
-                // Add event listeners to remove buttons
-                document.querySelectorAll('.remove-video').forEach(button => {
-                    button.addEventListener('click', () => {
-                        const index = parseInt(button.dataset.index);
-                        removeFromQueue(index);
+                if (!videoQueue.length) {
+                    videoQueueDiv.innerHTML = '<div class="queue-item"><span>No videos in queue</span></div>';
+                } else if (!videoQueueDiv.innerHTML.includes('reselect-video')) {
+                    // Only update if not showing reselection UI
+                    videoQueueDiv.innerHTML = '';
+                    videoQueue.forEach((video, index) => {
+                        const item = document.createElement('div');
+                        item.className = 'queue-item';
+                        const loadedStatus = videosLoaded ? 
+                            '<span class="status-loaded">(Loaded)</span>' : 
+                            '<span class="status-pending">(Pending Load)</span>';
+                        item.innerHTML = `
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <span>${video.name} ${loadedStatus}</span>
+                                <button class="remove-video remove" data-index="${index}">Remove</button>
+                            </div>
+                        `;
+                        if (index === currentVideoIndex) {
+                            item.style.backgroundColor = '#e2e6ea';
+                        }
+                        videoQueueDiv.appendChild(item);
                     });
-                });
+
+                    // Add event listeners to remove buttons
+                    document.querySelectorAll('.remove-video').forEach(button => {
+                        button.addEventListener('click', () => {
+                            const index = parseInt(button.dataset.index);
+                            removeFromQueue(index);
+                        });
+                    });
+                }
 
                 // Update button states
                 loadVideosBtn.disabled = videoQueue.length === 0;
@@ -390,7 +397,7 @@
             }
 
             function loadPreset(preset) {
-                console.log('Loading preset values:', preset); // Debug log
+                console.log('Loading preset values:', preset);
                 
                 // Set the input values
                 endTimeInput.value = preset.endTime || 0;
@@ -403,21 +410,55 @@
                 
                 // Update the UI
                 videoQueueDiv.innerHTML = '';
-                preset.videos.forEach(video => {
+                preset.videos.forEach((video, index) => {
                     const item = document.createElement('div');
                     item.className = 'queue-item';
+                    
+                    // Create a unique file input for this video
+                    const fileInputId = `reselect-video-${index}`;
                     item.innerHTML = `
-                        <span>${video.name}</span>
-                        <span class="status-pending">(Please reselect file)</span>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span>${video.name}</span>
+                            <label class="button" style="cursor: pointer; padding: 2px 8px; background: #007bff; color: white; border-radius: 4px;">
+                                Reselect
+                                <input type="file" 
+                                    id="${fileInputId}" 
+                                    accept="video/*" 
+                                    style="display: none;"
+                                    data-original-name="${video.name}"
+                                >
+                            </label>
+                            <span class="status-pending">(Pending)</span>
+                        </div>
                     `;
                     videoQueueDiv.appendChild(item);
+                    
+                    // Add event listener for this specific file input
+                    const fileInput = document.getElementById(fileInputId);
+                    fileInput.addEventListener('change', (e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                            // Replace in the queue at the correct position
+                            while (videoQueue.length <= index) {
+                                videoQueue.push(null);
+                            }
+                            videoQueue[index] = file;
+                            
+                            // Update status
+                            const statusSpan = item.querySelector('.status-pending');
+                            statusSpan.textContent = '(Selected)';
+                            statusSpan.className = 'status-loaded';
+                            
+                            // Clean up null entries and update display
+                            videoQueue = videoQueue.filter(f => f !== null);
+                            videosLoaded = false;
+                            loadedVideoQueue = [];
+                            updateQueueDisplay();
+                        }
+                    });
                 });
                 
-                // Update display and button states
                 updateQueueDisplay();
-                
-                // Show feedback to user
-                alert(`Preset "${preset.name}" loaded.\nPlease reselect ${preset.videos.length} video(s):\n${preset.videos.map(v => v.name).join('\n')}`);
             }
 
             function updatePresetList() {
